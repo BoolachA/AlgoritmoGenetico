@@ -153,7 +153,7 @@ def poblacion_inicial(n_ciudades, tam_poblacion, semilla=None):
 
 # Prueba rápida al ejecutar directamente:  python src/datos.py
 if __name__ == "__main__":
-    ciudades = leer_tsp("data/qa194.tsp")
+    ciudades = leer_tsp("../data/qa194.tsp")
     D = matriz_distancias(ciudades)
     pob = poblacion_inicial(len(ciudades), 5, semilla=42)
     print(f"Ciudades leídas: {len(ciudades)}")

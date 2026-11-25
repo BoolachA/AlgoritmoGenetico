@@ -4,7 +4,7 @@ import random
 
 from operadores import cruce_ciclos, mutacion_inversion
 
-# AJUSTAR: nombres de los módulos y funciones de Persona A
+import datos
 from datos import distancia_ruta      # distancia_ruta(ruta, D) -> float
 from datos import poblacion_inicial  # poblacion_inicial(n, tam) -> lista de rutas
 from seleccion import seleccion_ruleta   # seleccion_ruleta(poblacion, distancias) -> ruta
@@ -39,24 +39,25 @@ def algoritmo_genetico(D, tam_poblacion, prob_cruce, prob_mutacion, n_elite,
         orden = sorted(range(len(poblacion)), key=lambda i: distancias[i])
         nueva = [list(poblacion[i]) for i in orden[:n_elite]]
 
-        while len(nueva) < tam_poblacion:
-            # Selección
-            padre1 = seleccion_ruleta(poblacion, distancias)
-            padre2 = seleccion_ruleta(poblacion, distancias)
+        
+        # Selección: se eligen de una vez todos los padres (número par)
+        n_hijos = tam_poblacion - len(nueva)
+        padres = seleccion_ruleta(poblacion, distancias, n_hijos + n_hijos % 2)
 
-            # Cruzamiento
-            if random.random() < prob_cruce:
-                hijos = cruce_ciclos(padre1, padre2)
-            else:
-                hijos = (list(padre1), list(padre2))
+        for p in range(0, len(padres), 2):
+            padre1, padre2 = padres[p], padres[p + 1]
+        if random.random() < prob_cruce:
+            hijos = cruce_ciclos(padre1, padre2)
+        else:
+            hijos = (list(padre1), list(padre2))
 
-            # Mutación
-            for hijo in hijos:
-                if len(nueva) == tam_poblacion:
-                    break
-                if random.random() < prob_mutacion:
-                    hijo = mutacion_inversion(hijo)
-                nueva.append(hijo)
+        # Mutación
+        for hijo in hijos:
+            if len(nueva) == tam_poblacion:
+                break
+            if random.random() < prob_mutacion:
+                hijo = mutacion_inversion(hijo)
+            nueva.append(hijo)
 
         # Evaluación de la nueva generación
         poblacion = nueva
@@ -69,3 +70,12 @@ def algoritmo_genetico(D, tam_poblacion, prob_cruce, prob_mutacion, n_elite,
             mejor_ruta = list(poblacion[distancias.index(mejor_actual)])
 
     return mejor_ruta, historial
+
+if __name__ == "__main__":
+    ciudades = datos.leer_tsp("../data/qa194.tsp")
+    D = datos.matriz_distancias(ciudades)
+
+    mejor_ruta, historial = algoritmo_genetico(
+        D, tam_poblacion=50, prob_cruce=0.8, prob_mutacion=0.2,
+        n_elite=2, max_generaciones=500, semilla=42)
+    print(historial[0], "->", historial[-1])
