@@ -76,6 +76,6 @@ if __name__ == "__main__":
     D = datos.matriz_distancias(ciudades)
 
     mejor_ruta, historial = algoritmo_genetico(
-        D, tam_poblacion=50, prob_cruce=0.8, prob_mutacion=0.2,
-        n_elite=2, max_generaciones=500, semilla=42)
+        D, tam_poblacion=100, prob_cruce=0.8, prob_mutacion=0.2,
+        n_elite=2, max_generaciones=2000, semilla=42)
     print(historial[0], "->", historial[-1])
