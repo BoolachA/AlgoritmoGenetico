@@ -1,54 +1,84 @@
 """
-Tests de datos.py (Persona A).
+Tests de operadores.py, seleccion.py y ag.py.
 Ejecutar desde la carpeta raíz del repo con:   python -m pytest
-o sin pytest con:                              python tests/test_datos.py
+o sin pytest con:                              python tests/test_ag.py
 """
 import os
+import random
 import sys
 
-import numpy as np
-
-# Permite importar src/ aunque se ejecute el test directamente
+# Permite importar los módulos de src/ aunque se ejecute el test directamente
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
+sys.path.insert(0, os.path.join(RAIZ, "src"))
 
-from src.datos import leer_tsp, matriz_distancias, distancia_ruta, poblacion_inicial
-
-RUTA_TSP = os.path.join(RAIZ, "data", "qa194.tsp")
-
-
-def test_leer_tsp():
-    ciudades = leer_tsp(RUTA_TSP)
-    assert len(ciudades) == 194
-    assert ciudades[0] == (1, 24748.3333, 50840.0)
-    assert ciudades[-1] == (194, 26150.2778, 51108.0556)
+from ag import algoritmo_genetico
+from datos import matriz_distancias, distancia_ruta
+from operadores import mutacion_inversion, cruce_ciclos
+from seleccion import seleccion_ruleta
 
 
-def test_triangulo_3_4_5():
-    # Triángulo rectángulo de lados 3, 4 y 5 -> perímetro 12 (calculable a mano)
-    ciudades = [(1, 0.0, 0.0), (2, 3.0, 0.0), (3, 3.0, 4.0)]
-    D = matriz_distancias(ciudades)
-    assert D[0, 1] == 3 and D[1, 2] == 4 and D[0, 2] == 5
-    assert distancia_ruta([0, 1, 2], D) == 12
-    # Empezar en otra ciudad o recorrer al revés da la misma longitud
-    assert distancia_ruta([2, 0, 1], D) == 12
-    assert distancia_ruta([2, 1, 0], D) == 12
+def _matriz_prueba(n=20):
+    rng = random.Random(0)
+    ciudades = [(i + 1, rng.random() * 100, rng.random() * 100) for i in range(n)]
+    return matriz_distancias(ciudades)
 
 
-def test_matriz_simetrica():
-    D = matriz_distancias(leer_tsp(RUTA_TSP))
-    assert D.shape == (194, 194)
-    assert np.allclose(D, D.T)
-    assert np.all(np.diag(D) == 0)
+def test_cruce_ejemplo_enunciado():
+    p1 = [3, 1, 2, 6, 4, 5, 7, 9, 8]
+    p2 = [4, 5, 2, 1, 8, 7, 6, 9, 3]
+    hijo1, hijo2 = cruce_ciclos(p1, p2)
+    assert hijo1 == [3, 5, 2, 1, 4, 7, 6, 9, 8]
+    assert hijo2 == [4, 1, 2, 6, 8, 5, 7, 9, 3]
 
 
-def test_poblacion_valida():
-    pob = poblacion_inicial(194, 50, semilla=1)
-    assert len(pob) == 50
-    for crom in pob:
-        assert sorted(crom) == list(range(194))   # permutación: sin repetidos ni huecos
-    # Con la misma semilla sale la misma población (reproducibilidad)
-    assert pob == poblacion_inicial(194, 50, semilla=1)
+def test_cruce_hijos_validos():
+    random.seed(1)
+    for _ in range(200):
+        p1 = random.sample(range(194), 194)
+        p2 = random.sample(range(194), 194)
+        for hijo in cruce_ciclos(p1, p2):
+            assert sorted(hijo) == list(range(194))
+
+
+def test_mutacion_inversion():
+    random.seed(1)
+    original = list(range(10))
+    for _ in range(200):
+        hijo = mutacion_inversion(original)
+        assert original == list(range(10))        # no modifica el padre
+        assert sorted(hijo) == original           # sigue siendo permutación
+        # Lo que ha cambiado es un único tramo invertido
+        cambios = [i for i in range(10) if hijo[i] != original[i]]
+        i, j = cambios[0], cambios[-1] + 1
+        assert hijo[i:j] == original[i:j][::-1]
+
+
+def test_ruleta():
+    random.seed(1)
+    poblacion = [[0, 1, 2], [0, 2, 1], [1, 0, 2]]
+    elegidos = seleccion_ruleta(poblacion, [10.0, 20.0, 30.0], 3000)
+    assert len(elegidos) == 3000
+    assert all(c in poblacion for c in elegidos)
+    # La ruta más corta sale más veces que la más larga
+    assert elegidos.count(poblacion[0]) > elegidos.count(poblacion[2])
+
+
+def test_ag_resultado():
+    D = _matriz_prueba()
+    ruta, historial = algoritmo_genetico(D, 30, 0.8, 0.2, 2, 50, semilla=42)
+    assert sorted(ruta) == list(range(20))
+    assert len(historial) == 51                   # población inicial + 50 generaciones
+    # Con elitismo la mejor distancia nunca empeora
+    assert all(a >= b - 1e-9 for a, b in zip(historial, historial[1:]))
+    assert abs(distancia_ruta(ruta, D) - historial[-1]) < 1e-9
+
+
+def test_ag_reproducible():
+    D = _matriz_prueba()
+    primera = algoritmo_genetico(D, 30, 0.8, 0.2, 2, 20, semilla=7)
+    segunda = algoritmo_genetico(D, 30, 0.8, 0.2, 2, 20, semilla=7)
+    assert primera == segunda
 
 
 if __name__ == "__main__":

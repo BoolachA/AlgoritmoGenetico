@@ -25,7 +25,7 @@ def algoritmo_genetico(D, tam_poblacion, prob_cruce, prob_mutacion, n_elite,
         random.seed(semilla)  # permite repetir un experimento
 
     # Población inicial y su evaluación
-    poblacion = poblacion_inicial(len(D), tam_poblacion)
+    poblacion = poblacion_inicial(len(D), tam_poblacion, semilla)
     distancias = [distancia_ruta(r, D) for r in poblacion]
 
     mejor_distancia = min(distancias)
